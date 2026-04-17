@@ -1,7 +1,6 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import mongoose from 'mongoose'
 
 // Import routes
 import authRoutes from './routes/authRoutes.js'
@@ -12,7 +11,7 @@ import uploadRoutes from './routes/uploadRoutes.js'
 
 // Import middlewares
 import { errorMiddleware } from './middlewares/errorMiddleware.js'
-import connectDB from './config/db.js'
+import { connectDB } from './config/db.js'
 
 dotenv.config()
 
@@ -24,7 +23,7 @@ app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// Connect to MongoDB
+// Connect to MySQL
 connectDB().catch((error) => {
   console.error('Database connection failed:', error)
   process.exit(1)

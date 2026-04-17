@@ -1,32 +1,39 @@
 import Student from '../models/Student.js'
 import Payment from '../models/Payment.js'
 import Expense from '../models/Expense.js'
+import { fn, col, Op } from 'sequelize'
 
 export const generateAnalytics = async (startDate, endDate) => {
-  const query = {}
+  const where = {}
   if (startDate || endDate) {
-    query.createdAt = {}
-    if (startDate) query.createdAt.$gte = new Date(startDate)
-    if (endDate) query.createdAt.$lte = new Date(endDate)
+    where.createdAt = {}
+    if (startDate) where.createdAt[Op.gte] = new Date(startDate)
+    if (endDate) where.createdAt[Op.lte] = new Date(endDate)
   }
 
-  const totalStudents = await Student.countDocuments()
-  const activeStudents = await Student.countDocuments({ status: 'active' })
-  const totalRevenue = await Payment.aggregate([
-    { $match: { status: 'completed', ...query } },
-    { $group: { _id: null, total: { $sum: '$amount' } } },
-  ])
-  const totalExpenses = await Expense.aggregate([
-    { $match: query },
-    { $group: { _id: null, total: { $sum: '$amount' } } },
-  ])
+  const totalStudents = await Student.count()
+  const activeStudents = await Student.count({ where: { status: 'active' } })
+
+  const totalRevenueResult = await Payment.findAll({
+    where: { status: 'completed', ...where },
+    attributes: [[fn('SUM', col('amount')), 'total']],
+    raw: true,
+  })
+  const totalRevenue = parseFloat(totalRevenueResult[0]?.total) || 0
+
+  const totalExpensesResult = await Expense.findAll({
+    where,
+    attributes: [[fn('SUM', col('amount')), 'total']],
+    raw: true,
+  })
+  const totalExpenses = parseFloat(totalExpensesResult[0]?.total) || 0
 
   return {
     totalStudents,
     activeStudents,
-    totalRevenue: totalRevenue[0]?.total || 0,
-    totalExpenses: totalExpenses[0]?.total || 0,
-    netProfit: (totalRevenue[0]?.total || 0) - (totalExpenses[0]?.total || 0),
+    totalRevenue,
+    totalExpenses,
+    netProfit: totalRevenue - totalExpenses,
   }
 }
 
@@ -34,28 +41,35 @@ export const getMonthlySummary = async (year, month) => {
   const startDate = new Date(year, month - 1, 1)
   const endDate = new Date(year, month, 1)
 
-  const revenue = await Payment.aggregate([
-    {
-      $match: {
-        status: 'completed',
-        date: { $gte: startDate, $lt: endDate },
+  const revenueResult = await Payment.findAll({
+    where: {
+      status: 'completed',
+      date: {
+        [Op.gte]: startDate,
+        [Op.lt]: endDate,
       },
     },
-    { $group: { _id: null, total: { $sum: '$amount' } } },
-  ])
+    attributes: [[fn('SUM', col('amount')), 'total']],
+    raw: true,
+  })
 
-  const expenses = await Expense.aggregate([
-    {
-      $match: {
-        date: { $gte: startDate, $lt: endDate },
+  const expensesResult = await Expense.findAll({
+    where: {
+      date: {
+        [Op.gte]: startDate,
+        [Op.lt]: endDate,
       },
     },
-    { $group: { _id: null, total: { $sum: '$amount' } } },
-  ])
+    attributes: [[fn('SUM', col('amount')), 'total']],
+    raw: true,
+  })
+
+  const revenue = parseFloat(revenueResult[0]?.total) || 0
+  const expenses = parseFloat(expensesResult[0]?.total) || 0
 
   return {
-    revenue: revenue[0]?.total || 0,
-    expenses: expenses[0]?.total || 0,
-    profit: (revenue[0]?.total || 0) - (expenses[0]?.total || 0),
+    revenue,
+    expenses,
+    profit: revenue - expenses,
   }
 }

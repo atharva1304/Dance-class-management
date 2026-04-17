@@ -1,21 +1,25 @@
 import Student from '../models/Student.js'
 import Payment from '../models/Payment.js'
+import { Op } from 'sequelize'
 
 export const getStudents = async (req, res) => {
   try {
     const { status, level, searchTerm } = req.query
-    let query = {}
+    let where = {}
 
-    if (status) query.status = status
-    if (level) query.level = level
+    if (status) where.status = status
+    if (level) where.level = level
     if (searchTerm) {
-      query.$or = [
-        { name: { $regex: searchTerm, $options: 'i' } },
-        { email: { $regex: searchTerm, $options: 'i' } },
+      where[Op.or] = [
+        { name: { [Op.like]: `%${searchTerm}%` } },
+        { email: { [Op.like]: `%${searchTerm}%` } },
       ]
     }
 
-    const students = await Student.find(query).sort({ createdAt: -1 })
+    const students = await Student.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+    })
     res.json(students)
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -24,7 +28,7 @@ export const getStudents = async (req, res) => {
 
 export const getStudent = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id)
+    const student = await Student.findByPk(req.params.id)
     if (!student) return res.status(404).json({ message: 'Student not found' })
     res.json(student)
   } catch (error) {
@@ -34,8 +38,7 @@ export const getStudent = async (req, res) => {
 
 export const createStudent = async (req, res) => {
   try {
-    const student = new Student(req.body)
-    await student.save()
+    const student = await Student.create(req.body)
     res.status(201).json(student)
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -44,8 +47,10 @@ export const createStudent = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
   try {
-    const student = await Student.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const student = await Student.findByPk(req.params.id)
     if (!student) return res.status(404).json({ message: 'Student not found' })
+    
+    await student.update(req.body)
     res.json(student)
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -54,8 +59,10 @@ export const updateStudent = async (req, res) => {
 
 export const deleteStudent = async (req, res) => {
   try {
-    const student = await Student.findByIdAndDelete(req.params.id)
+    const student = await Student.findByPk(req.params.id)
     if (!student) return res.status(404).json({ message: 'Student not found' })
+    
+    await student.destroy()
     res.json({ message: 'Student deleted' })
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -64,7 +71,10 @@ export const deleteStudent = async (req, res) => {
 
 export const getStudentPayments = async (req, res) => {
   try {
-    const payments = await Payment.find({ studentId: req.params.id }).sort({ date: -1 })
+    const payments = await Payment.findAll({
+      where: { studentId: req.params.id },
+      order: [['date', 'DESC']],
+    })
     res.json(payments)
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -75,7 +85,7 @@ export const addPayment = async (req, res) => {
   try {
     const { amount, paymentMethod, transactionId, notes } = req.body
 
-    const payment = new Payment({
+    const payment = await Payment.create({
       studentId: req.params.id,
       amount,
       paymentMethod,
@@ -84,13 +94,10 @@ export const addPayment = async (req, res) => {
       date: new Date(),
     })
 
-    await payment.save()
-
     // Update student's total paid
-    const student = await Student.findById(req.params.id)
-    student.totalPaid += amount
-    student.lastPaymentDate = new Date()
-    await student.save()
+    const student = await Student.findByPk(req.params.id)
+    await student.increment('totalPaid', { by: amount })
+    await student.update({ lastPaymentDate: new Date() })
 
     res.status(201).json(payment)
   } catch (error) {

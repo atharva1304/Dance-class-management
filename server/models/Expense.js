@@ -1,31 +1,55 @@
-import mongoose from 'mongoose'
+import { DataTypes } from 'sequelize'
+import sequelize from '../config/db.js'
 
-const ExpenseSchema = new mongoose.Schema(
+const Expense = sequelize.define(
+  'Expense',
   {
-    category: {
-      type: String,
-      required: true,
-      enum: ['rent', 'utilities', 'equipment', 'maintenance', 'salary', 'other'],
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
-    description: String,
+    category: {
+      type: DataTypes.ENUM('rent', 'utilities', 'equipment', 'maintenance', 'salary', 'other'),
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+    },
     amount: {
-      type: Number,
-      required: true,
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
     },
     date: {
-      type: Date,
-      required: true,
-      default: Date.now,
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
     paymentMethod: {
-      type: String,
-      enum: ['cash', 'bank', 'upi', 'cheque'],
+      type: DataTypes.ENUM('cash', 'bank', 'upi', 'cheque'),
     },
-    referenceNumber: String,
-    notes: String,
-    attachments: [String],
+    referenceNumber: {
+      type: DataTypes.STRING(255),
+    },
+    notes: {
+      type: DataTypes.TEXT,
+    },
+    attachments: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    indexes: [
+      {
+        fields: ['category'],
+      },
+      {
+        fields: ['date'],
+      },
+    ],
+  }
 )
 
-export default mongoose.model('Expense', ExpenseSchema)
+export default Expense

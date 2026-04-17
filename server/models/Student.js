@@ -1,49 +1,84 @@
-import mongoose from 'mongoose'
+import { DataTypes } from 'sequelize'
+import sequelize from '../config/db.js'
 
-const StudentSchema = new mongoose.Schema(
+const Student = sequelize.define(
+  'Student',
   {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
     email: {
-      type: String,
-      required: true,
+      type: DataTypes.STRING(255),
+      allowNull: false,
       unique: true,
       lowercase: true,
+      validate: {
+        isEmail: true,
+      },
     },
-    password: String,
+    password: {
+      type: DataTypes.STRING(255),
+    },
     name: {
-      type: String,
-      required: true,
+      type: DataTypes.STRING(255),
+      allowNull: false,
     },
-    phone: String,
-    address: String,
-    danceType: String,
+    phone: {
+      type: DataTypes.STRING(20),
+    },
+    address: {
+      type: DataTypes.TEXT,
+    },
+    danceType: {
+      type: DataTypes.STRING(255),
+    },
     level: {
-      type: String,
-      enum: ['beginner', 'intermediate', 'advanced'],
-      default: 'beginner',
+      type: DataTypes.ENUM('beginner', 'intermediate', 'advanced'),
+      defaultValue: 'beginner',
     },
-    batchTiming: String,
+    batchTiming: {
+      type: DataTypes.STRING(255),
+    },
     feeAmount: {
-      type: Number,
-      default: 0,
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
     },
     feeFrequency: {
-      type: String,
-      enum: ['monthly', 'quarterly', 'yearly'],
-      default: 'monthly',
+      type: DataTypes.ENUM('monthly', 'quarterly', 'yearly'),
+      defaultValue: 'monthly',
     },
     status: {
-      type: String,
-      enum: ['active', 'inactive', 'graduated', 'suspended'],
-      default: 'active',
+      type: DataTypes.ENUM('active', 'inactive', 'graduated', 'suspended'),
+      defaultValue: 'active',
     },
-    joinDate: Date,
-    lastPaymentDate: Date,
+    joinDate: {
+      type: DataTypes.DATE,
+    },
+    lastPaymentDate: {
+      type: DataTypes.DATE,
+    },
     totalPaid: {
-      type: Number,
-      default: 0,
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    indexes: [
+      {
+        unique: true,
+        fields: ['email'],
+      },
+      {
+        fields: ['status'],
+      },
+      {
+        fields: ['createdAt'],
+      },
+    ],
+  }
 )
 
-export default mongoose.model('Student', StudentSchema)
+export default Student

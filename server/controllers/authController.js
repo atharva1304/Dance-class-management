@@ -12,7 +12,7 @@ export const login = async (req, res) => {
 
     const Model = role === 'admin' ? Admin : Student
 
-    const user = await Model.findOne({ email })
+    const user = await Model.findOne({ where: { email } })
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' })
     }
@@ -25,7 +25,7 @@ export const login = async (req, res) => {
 
     const token = jwt.sign(
       {
-        id: user._id,
+        id: user.id,
         email: user.email,
         role: role,
       },
@@ -36,7 +36,7 @@ export const login = async (req, res) => {
     res.json({
       token,
       user: {
-        id: user._id,
+        id: user.id,
         email: user.email,
         name: user.name,
         role: role,
@@ -81,22 +81,20 @@ export const register = async (req, res) => {
 
     const Model = role === 'admin' ? Admin : Student
 
-    const existingUser = await Model.findOne({ email })
+    const existingUser = await Model.findOne({ where: { email } })
     if (existingUser) {
       return res.status(400).json({ message: 'Email already in use' })
     }
 
-    const user = new Model({
+    const user = await Model.create({
       email,
       password,
       name,
     })
 
-    await user.save()
-
     const token = jwt.sign(
       {
-        id: user._id,
+        id: user.id,
         email: user.email,
         role: role,
       },
@@ -107,7 +105,7 @@ export const register = async (req, res) => {
     res.status(201).json({
       token,
       user: {
-        id: user._id,
+        id: user.id,
         email: user.email,
         name: user.name,
         role: role,

@@ -1,36 +1,68 @@
-import mongoose from 'mongoose'
+import { DataTypes } from 'sequelize'
+import sequelize from '../config/db.js'
+import Student from './Student.js'
 
-const PaymentSchema = new mongoose.Schema(
+const Payment = sequelize.define(
+  'Payment',
   {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
     studentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Student',
-      required: true,
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: Student,
+        key: 'id',
+      },
     },
     amount: {
-      type: Number,
-      required: true,
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
     },
     date: {
-      type: Date,
-      required: true,
-      default: Date.now,
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
-    month: String, // e.g., "January 2024"
+    month: {
+      type: DataTypes.STRING(50),
+    },
     paymentMethod: {
-      type: String,
-      enum: ['cash', 'bank', 'upi', 'check', 'online'],
-      default: 'cash',
+      type: DataTypes.ENUM('cash', 'bank', 'upi', 'check', 'online'),
+      defaultValue: 'cash',
     },
-    transactionId: String,
+    transactionId: {
+      type: DataTypes.STRING(255),
+    },
     status: {
-      type: String,
-      enum: ['completed', 'pending', 'cancelled', 'refunded'],
-      default: 'completed',
+      type: DataTypes.ENUM('completed', 'pending', 'cancelled', 'refunded'),
+      defaultValue: 'completed',
     },
-    notes: String,
+    notes: {
+      type: DataTypes.TEXT,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    indexes: [
+      {
+        fields: ['studentId'],
+      },
+      {
+        fields: ['status'],
+      },
+      {
+        fields: ['date'],
+      },
+    ],
+  }
 )
 
-export default mongoose.model('Payment', PaymentSchema)
+// Setup associations
+Payment.belongsTo(Student, { foreignKey: 'studentId', as: 'student' })
+Student.hasMany(Payment, { foreignKey: 'studentId', as: 'payments' })
+
+export default Payment
