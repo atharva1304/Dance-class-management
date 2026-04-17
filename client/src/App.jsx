@@ -7,6 +7,9 @@ import { useAuth } from './hooks/useAuth'
 import AdminLayout from './layouts/AdminLayout'
 import StudentLayout from './layouts/StudentLayout'
 
+// Landing Page
+import LandingPage from './pages/LandingPage'
+
 // Auth Pages
 import AdminLogin from './pages/Auth/AdminLogin'
 import StudentLogin from './pages/Auth/StudentLogin'
@@ -72,8 +75,11 @@ function App() {
             <Route path="payment-history" element={<PaymentHistory />} />
           </Route>
 
-          {/* Default Route */}
-          <Route path="/" element={<Navigate to="/admin-login" />} />
+          {/* Landing Page Route */}
+          <Route path="/" element={<LandingPage />} />
+
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
     </AuthProvider>

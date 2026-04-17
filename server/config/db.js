@@ -3,6 +3,7 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
+// Create Sequelize instance
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'dance_class_db',
   process.env.DB_USER || 'root',
@@ -21,20 +22,22 @@ const sequelize = new Sequelize(
   }
 )
 
+// Connect Database
 export const connectDB = async () => {
   try {
     await sequelize.authenticate()
-    console.log('MySQL Connected successfully')
-    
+    console.log('✅ MySQL Connected successfully')
+
     // Sync models with database
     await sequelize.sync({ alter: true })
-    console.log('Database synchronized')
-    
-    return sequelize
+    console.log('✅ Database synchronized')
+
   } catch (error) {
-    console.error('Database connection failed:', error)
+    console.error('❌ Database connection failed:', error)
     process.exit(1)
   }
 }
 
+// ✅ IMPORTANT: Export both ways
+export { sequelize }
 export default sequelize
