@@ -34,20 +34,13 @@ const Student = sequelize.define(
     danceType: {
       type: DataTypes.STRING(255),
     },
-    level: {
-      type: DataTypes.ENUM('beginner', 'intermediate', 'advanced'),
-      defaultValue: 'beginner',
-    },
-    batchTiming: {
-      type: DataTypes.STRING(255),
+    duration: {
+      type: DataTypes.ENUM('1', '3', '6'),
+      defaultValue: '1',
     },
     feeAmount: {
       type: DataTypes.DECIMAL(10, 2),
       defaultValue: 0,
-    },
-    feeFrequency: {
-      type: DataTypes.ENUM('monthly', 'quarterly', 'yearly'),
-      defaultValue: 'monthly',
     },
     status: {
       type: DataTypes.ENUM('active', 'inactive', 'graduated', 'suspended'),
