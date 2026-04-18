@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { getExpenses, createExpense, deleteExpense, updateExpense } from '../../services/expenseService'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState([])
@@ -10,6 +11,9 @@ export default function Expenses() {
   const [success, setSuccess] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [dateFilter, setDateFilter] = useState('all') // all, month, custom
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
 
   const [formData, setFormData] = useState({
     category: '',
@@ -21,6 +25,15 @@ export default function Expenses() {
 
   const categories = ['rent', 'utilities', 'equipment', 'maintenance', 'salary', 'other']
   const paymentMethods = ['cash', 'bank', 'upi', 'cheque']
+
+  const CATEGORY_COLORS = {
+    rent: '#ff6b6b',
+    utilities: '#4ecdc4',
+    equipment: '#95e1d3',
+    maintenance: '#f38181',
+    salary: '#aa96da',
+    other: '#fcbad3'
+  }
 
   // Load expenses on component mount
   useEffect(() => {
@@ -131,21 +144,57 @@ export default function Expenses() {
     })
   }
 
-  // Filter expenses based on search and category
-  const filteredExpenses = expenses.filter(expense =>
-    (expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.category.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (categoryFilter === '' || expense.category === categoryFilter)
-  )
+  // Filter expenses based on search, category, and date
+  const getFilteredExpenses = () => {
+    let filtered = expenses.filter(expense =>
+      (expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        expense.category.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (categoryFilter === '' || expense.category === categoryFilter)
+    )
+
+    // Apply date filter
+    const now = new Date()
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const expenseDate = (dateStr) => new Date(dateStr)
+
+    if (dateFilter === 'month') {
+      filtered = filtered.filter(expense => {
+        const date = expenseDate(expense.date)
+        return date >= currentMonth && date <= now
+      })
+    } else if (dateFilter === 'custom') {
+      if (customStartDate && customEndDate) {
+        const startDate = new Date(customStartDate)
+        const endDate = new Date(customEndDate)
+        endDate.setHours(23, 59, 59, 999)
+        filtered = filtered.filter(expense => {
+          const date = expenseDate(expense.date)
+          return date >= startDate && date <= endDate
+        })
+      }
+    }
+
+    return filtered
+  }
+
+  const filteredExpenses = getFilteredExpenses()
 
   // Calculate statistics
-  const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
   const categoryStats = categories.reduce((stats, cat) => {
-    stats[cat] = expenses
+    stats[cat] = filteredExpenses
       .filter(e => e.category === cat)
       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
     return stats
   }, {})
+
+  // Pie chart data for categories
+  const expensesByCategory = Object.entries(categoryStats)
+    .filter(([_, amount]) => amount > 0)
+    .map(([category, amount]) => ({
+      name: category.charAt(0).toUpperCase() + category.slice(1),
+      value: amount
+    }))
 
   const getCategoryColor = (category) => {
     const colors = {
@@ -306,7 +355,7 @@ export default function Expenses() {
       {/* Search and Filter */}
       {expenses.length > 0 && !showForm && (
         <div className="bg-white rounded-lg shadow p-4 border border-gray-200 space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             <input
               type="text"
               placeholder="Search by description..."
@@ -326,7 +375,40 @@ export default function Expenses() {
                 </option>
               ))}
             </select>
+
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="all">All Dates</option>
+              <option value="month">This Month</option>
+              <option value="custom">Custom Range</option>
+            </select>
           </div>
+
+          {dateFilter === 'custom' && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -394,6 +476,64 @@ export default function Expenses() {
       {/* Statistics */}
       {expenses.length > 0 && (
         <div className="space-y-4">
+          {/* Expense Categories Pie Chart */}
+          {expensesByCategory.length > 0 && (
+            <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">🎨 Expenses Distribution by Category</h2>
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart>
+                  <Pie
+                    data={expensesByCategory}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value, percent }) => `${name}: ₹${value.toFixed(0)} (${(percent * 100).toFixed(1)}%)`}
+                    outerRadius={100}
+                    innerRadius={50}
+                    dataKey="value"
+                    animationDuration={800}
+                  >
+                    {expensesByCategory.map((entry, index) => {
+                      const categoryName = entry.name.toLowerCase()
+                      return (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={CATEGORY_COLORS[categoryName] || '#999'}
+                        />
+                      )
+                    })}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value) => `₹${value.toFixed(2)}`}
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '2px solid #45B7D1', 
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+
+              {/* Category Legend */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6 pt-6 border-t border-gray-200">
+                {expensesByCategory.map((entry, index) => {
+                  const categoryName = entry.name.toLowerCase()
+                  const color = CATEGORY_COLORS[categoryName] || '#999'
+                  return (
+                    <div key={index} className="flex items-center gap-2">
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: color }}
+                      ></div>
+                      <span className="text-sm font-semibold text-gray-700">{entry.name}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Total Expenses */}
           <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-6 border border-red-200">
             <p className="text-gray-600 text-sm font-semibold">Total Expenses</p>
